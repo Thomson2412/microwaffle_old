@@ -1,0 +1,63 @@
+body{
+  background-color:aqua;
+  background-image: url(/img/logo.png);
+}
+
+.container{
+  margin-left: 10%;
+  margin-right: 10%;
+}
+
+.title{
+  padding:1%;
+  background-color:blueviolet;
+  text-align: center;
+  font-family:monospace;
+  font-size:400%;
+}
+
+.content-container{
+ 
+  margin-top: 1%;
+  padding: 1%;
+  background-color:yellowgreen;
+  text-align:center;
+}
+
+.timer-container{
+  margin-top: 2%;
+}
+
+.timer-container button{
+  width: 160px;
+  color:orange;
+  background-color:sienna;
+  font-size: 300%;
+}
+
+.timer{
+  font-family:sans-serif;
+  font-size: 800%;
+}
+
+button{
+  border: none;
+  color: white;
+  padding: 15px 32px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 300%;
+}
+
+.button-container{
+  margin: 2%;
+}
+
+.startButton{
+  background-color: #4CAF50; /* Green */
+}
+
+.stopButton{
+  background-color: #f44336; /* Green */
+}
