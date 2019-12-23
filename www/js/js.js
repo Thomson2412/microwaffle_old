@@ -27,7 +27,8 @@ $( document ).ready(function() {
         }
         getStatus();
         am.play("down");
-        //am.stop("loop");
+        am.stop("loop");
+        am.stop("alarm");
     });
 
     $( "#plusMinute" ).click(function() {
@@ -80,10 +81,10 @@ $( document ).ready(function() {
     });
     am = new AudioManager();
     am.init([
-        {"filename": "up.mp3", "loop": false, "volume": true},
-        {"filename": "down.mp3", "loop": false, "volume": true},
-        {"filename": "alarm.mp3", "loop": false, "volume": true},
-        {"filename": "loop.mp3", "loop": false, "volume": true},
+        {"filename": "up.mp3", "loop": false, "volume": 1},
+        {"filename": "down.mp3", "loop": false, "volume": 1},
+        {"filename": "alarm.mp3", "loop": true, "volume": 1},
+        {"filename": "loop.mp3", "loop": true, "volume": 0.5},
     ]);
     getStatus();
 });
@@ -121,7 +122,7 @@ function processStatus(data){
             clearTimeout(statusTimeout);
             statusTimeout = undefined;
             am.play("alarm");
-            //am.stop("loop");
+            am.stop("loop");
         }
     }
 
