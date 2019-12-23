@@ -63,22 +63,6 @@ class RequestHandler(SimpleHTTPRequestHandler):
             print('RequestHandler: Stop')
             self.timerEnded()
 
-        elif self.path.find('.mp3') >= 0:
-            pathTo = os.getcwd() + '/www' + self.path
-            f = open(pathTo, 'rb')
-            st = os.fstat(f.fileno())
-            length = st.st_size
-            data = f.read()
-
-            self.send_response(200)
-            self.send_header('Content-type', 'audio/mpeg')
-            self.send_header('Content-Length', length)
-            self.send_header('Accept-Ranges', 'bytes')
-            self.end_headers()
-
-            self.wfile.write(data)
-            f.close()
-
         else:
             SimpleHTTPRequestHandler.do_GET(self)
 
