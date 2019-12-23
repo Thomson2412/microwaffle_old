@@ -80,11 +80,10 @@ $( document ).ready(function() {
     });
     am = new AudioManager();
     am.init([
-        "boot.mp3",
-        "alarm.mp3",
-        "up.mp3",
-        "down.mp3",
-        //"loop.mp3"
+        {"filename": "up.mp3", "loop": false, "volume": true},
+        {"filename": "down.mp3", "loop": false, "volume": true},
+        {"filename": "alarm.mp3", "loop": false, "volume": true},
+        {"filename": "loop.mp3", "loop": false, "volume": true},
     ]);
     getStatus();
 });
