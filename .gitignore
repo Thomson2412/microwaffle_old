@@ -127,3 +127,24 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# pycharm
+.idea/
+
+# general
+*.DS_Store
+
+#Android
+*.iml
+app/android/Microwaffle400/.gradle
+app/android/Microwaffle400/local.properties
+app/android/Microwaffle400/.idea/caches
+app/android/Microwaffle400/.idea/libraries
+app/android/Microwaffle400/.idea/modules.xml
+app/android/Microwaffle400/.idea/workspace.xml
+app/android/Microwaffle400/.idea/navEditor.xml
+app/android/Microwaffle400/.idea/assetWizardSettings.xml
+app/android/Microwaffle400/build
+app/android/Microwaffle400/captures
+app/android/Microwaffle400/.externalNativeBuild
+app/android/Microwaffle400/.cxx

@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">Microwaffle 400</string>
+
+    <string name="plus">+</string>
+    <string name="minus">-</string>
+
+    <string name="start">Start</string>
+    <string name="stop">Stop</string>
+
+    <string name="timer">%1$02d:%2$02d</string>
+</resources>
