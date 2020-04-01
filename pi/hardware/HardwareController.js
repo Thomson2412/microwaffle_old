@@ -91,7 +91,7 @@ function setRelay(value) {
         return;
     }
 
-    relay.writeSync(value);
+    relay.writeSync(value ^ 1);
 }
 
 function initRelay() {
@@ -102,7 +102,6 @@ function initRelay() {
 
     if (Gpio.accessible) {
         relay = new Gpio(config.hardware.relay_pin, "out");
-        // more real code here
     } else {
         relay = {
             writeSync: value => {
@@ -110,4 +109,5 @@ function initRelay() {
             }
         };
     }
+    setRelay(0);
 }
