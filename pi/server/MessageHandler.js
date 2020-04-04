@@ -11,7 +11,7 @@ module.exports = class MessageHandler {
 
             utils.log(TAG, "a user connected");
             socket.emit("statusUpdate", hardwareController.getStatus());
-            let cbf =
+
             hardwareController.addStatusUpdateCallback(socket.id,
                 function (status) {
                     socket.emit("statusUpdate", status);

@@ -11,7 +11,6 @@ class MicroTimer(val onTickCb: (time: Int) -> Unit, val onFinishCb: () -> Unit) 
         private set
 
     fun start(sec: Int) {
-
         if(sec <= 0)
             return
 

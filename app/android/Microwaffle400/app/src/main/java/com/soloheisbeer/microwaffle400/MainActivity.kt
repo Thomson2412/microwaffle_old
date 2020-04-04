@@ -7,15 +7,21 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import org.json.JSONObject
 
+interface UIUpdateInterface {
+    fun statusUpdate(status: JSONObject)
+    fun connectedToMicrowave()
+    fun disconnectedToMicrowave()
+}
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), UIUpdateInterface{
 
     private val TAG = "MAIN"
     private var timeInSeconds = 0
-    private val networkManager = NetworkManager()
+    private val networkManager = NetworkManager
     private lateinit var timerText: TextView
     private val microTimer = MicroTimer(::onTimerTick, ::onTimerFinish)
     private val audioManager = AudioManager(this@MainActivity)
+    private var connectingDialog: AlertDialog? = null
 
     private val minSteps = 60 * 1
     private val secSteps = 10
@@ -38,8 +44,6 @@ class MainActivity : AppCompatActivity() {
         val spButton = findViewById<Button>(R.id.button_sp)
         val mmButton = findViewById<Button>(R.id.button_mm)
         val smButton = findViewById<Button>(R.id.button_sm)
-
-        updateSate()
 
         // set on-click listener
         startButton.setOnClickListener {
@@ -91,60 +95,75 @@ class MainActivity : AppCompatActivity() {
             audioManager.play("down")
             updateTimerText()
         }
+
+        showConnectingDialog()
+        networkManager.init(this)
     }
 
-    fun updateSate(){
-        val status = networkManager.getStatus()
-        if(status == null){
-            val alertDialog: AlertDialog = AlertDialog.Builder(this@MainActivity).create()
-            alertDialog.setTitle("Microwaffle not found")
-            alertDialog.setMessage("Clossing you mofo")
-            alertDialog.setCancelable(false)
-            alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "OK") { dialog, _ -> dialog.dismiss(); this.finishAffinity() }
-            alertDialog.show()
-
-            return
+    private fun showConnectingDialog(){
+        connectingDialog = AlertDialog.Builder(this@MainActivity).create()
+        connectingDialog!!.setTitle("Connecting to Microwaffle")
+        connectingDialog!!.setMessage("We are trying to connect to the the Microwaffle 300. Please remain seated")
+        connectingDialog!!.setCancelable(false)
+        connectingDialog!!.setButton(AlertDialog.BUTTON_NEUTRAL, "No thank you") {
+                dialog, _ -> dialog.dismiss(); this.finishAffinity()
         }
+        connectingDialog!!.show()
+    }
 
-
-        val statusJson = JSONObject(status)
-        if(statusJson["busy"] as Boolean) {
-            timeInSeconds = statusJson["timer"] as Int
-            if(microTimer.isRunning){
-                if(microTimer.time - timeInSeconds > secSteps) {
-                    val diff = timeInSeconds - microTimer.time
-                    microTimer.add(diff)
+    override fun statusUpdate(status: JSONObject){
+        this@MainActivity.runOnUiThread(java.lang.Runnable {
+            if (status["running"] as Boolean) {
+                timeInSeconds = status["timeInSeconds"] as Int
+                if (microTimer.isRunning) {
+                    if (microTimer.time - timeInSeconds > secSteps) {
+                        val diff = timeInSeconds - microTimer.time
+                        microTimer.add(diff)
+                    }
+                } else {
+                    microTimer.start(timeInSeconds)
                 }
             }
-            else {
-                microTimer.start(timeInSeconds)
-            }
-            updateTimerText()
-        }
+        })
     }
 
-    fun onTimerTick(tis: Int){
-        if(microTimer.time > 0 && microTimer.time % 60 == 0){
-            updateSate()
-        }
-        else {
-            timeInSeconds = tis
-            updateTimerText()
-        }
+    override fun connectedToMicrowave() {
+        this@MainActivity.runOnUiThread(java.lang.Runnable {
+            connectingDialog!!.cancel()
+        })
+    }
+
+    override fun disconnectedToMicrowave() {
+        this@MainActivity.runOnUiThread(java.lang.Runnable {
+            showConnectingDialog()
+        })
+    }
+
+    private fun onTimerTick(tis: Int){
+        //Sync timer every minute, not needed now as sever sends status update every tick
+//        if(microTimer.time > 0 && microTimer.time % 60 == 0){
+//            networkManager.sendStatusUpdateRequest()
+//        }
+//        else {
+//            timeInSeconds = tis
+//            updateTimerText()
+//        }
+        timeInSeconds = tis
+        updateTimerText()
         audioManager.play("down")
     }
 
-    fun onTimerFinish(){
+    private fun onTimerFinish(){
         audioManager.play("alarm", true)
         audioManager.stop("loop")
     }
 
 
-    fun updateTimerText(){
-        timerText.setText(secondsToTimeString(timeInSeconds))
+    private fun updateTimerText(){
+        timerText.text = secondsToTimeString(timeInSeconds)
     }
 
-    fun secondsToTimeString(tis: Int): String{
+    private fun secondsToTimeString(tis: Int): String{
         val min  = tis / 60
         val sec = tis % 60
         return getString(R.string.timer, min, sec)
@@ -152,6 +171,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        networkManager.cleanUp()
         microTimer.stop()
         audioManager.cleanUp()
     }

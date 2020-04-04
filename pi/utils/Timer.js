@@ -54,6 +54,7 @@ module.exports = class Timer {
             return;
         }
         isRunning = true;
+        this.countdown();
         timerIntervalFunction = setInterval(this.countdown, countdownIntervalMS);
     }
 
