@@ -24,6 +24,7 @@ $( document ).ready(function() {
         am.play("down");
         am.stop("loop");
         am.stop("alarm");
+        working = false;
     });
 
     $( "#plusMinute" ).click(function() {
@@ -83,7 +84,7 @@ function updateUI(){
 }
 
 function statusUpdateCallback(status) {
-    if(timeInSeconds > status.timeInSeconds){
+    if(timeInSeconds > status.timeInSeconds && working === true ){
         am.play("down");
     }
     if(working === true && status.running === false){

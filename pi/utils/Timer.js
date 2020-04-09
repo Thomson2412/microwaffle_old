@@ -58,7 +58,7 @@ module.exports = class Timer {
         timerIntervalFunction = setInterval(this.countdown, countdownIntervalMS);
     }
 
-    stop (){
+    pause (){
         if(!isRunning){
             utils.log(TAG, "Timer is not running");
             return;
@@ -68,8 +68,11 @@ module.exports = class Timer {
     }
 
     reset (){
-        this.stop();
+        this.pause();
         timeInSeconds = 0;
+        if(typeof timerDoneCallback == "function"){
+            timerDoneCallback();
+        }
     }
 
     getCurrentTime(){

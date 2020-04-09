@@ -1,6 +1,5 @@
 const TAG = 'MessageHandler';
 const utils = require('../utils/Utils');
-const timer = require('../utils/Timer');
 const hardwareController = require('../hardware/HardwareController');
 
 module.exports = class MessageHandler {
