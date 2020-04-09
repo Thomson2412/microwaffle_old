@@ -102,8 +102,10 @@ class MainActivity : AppCompatActivity(), UIUpdateInterface{
 
     private fun showConnectingDialog(){
         connectingDialog = AlertDialog.Builder(this@MainActivity).create()
-        connectingDialog!!.setTitle("Connecting to Microwaffle")
-        connectingDialog!!.setMessage("We are trying to connect to the the Microwaffle 300. Please remain seated")
+        connectingDialog!!.setTitle(
+            getString(R.string.connecting_dialog_title, getString(R.string.app_name)))
+        connectingDialog!!.setMessage(
+            getString(R.string.connecting_dialog_content, getString(R.string.app_name)))
         connectingDialog!!.setCancelable(false)
         connectingDialog!!.setButton(AlertDialog.BUTTON_NEUTRAL, "No thank you") {
                 dialog, _ -> dialog.dismiss(); this.finishAffinity()
