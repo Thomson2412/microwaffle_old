@@ -107,7 +107,8 @@ class MainActivity : AppCompatActivity(), UIUpdateInterface{
         connectingDialog!!.setMessage(
             getString(R.string.connecting_dialog_content, getString(R.string.app_name)))
         connectingDialog!!.setCancelable(false)
-        connectingDialog!!.setButton(AlertDialog.BUTTON_NEUTRAL, "No thank you") {
+        connectingDialog!!.setButton(
+            AlertDialog.BUTTON_NEUTRAL, getString(R.string.connecting_dialog_dismiss)) {
                 dialog, _ -> dialog.dismiss(); this.finishAffinity()
         }
         connectingDialog!!.show()
