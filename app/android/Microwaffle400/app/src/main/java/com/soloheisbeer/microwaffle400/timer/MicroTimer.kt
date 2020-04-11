@@ -1,4 +1,4 @@
-package com.soloheisbeer.microwaffle400
+package com.soloheisbeer.microwaffle400.timer
 
 import android.os.CountDownTimer
 

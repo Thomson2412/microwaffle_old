@@ -1,27 +1,46 @@
 package com.soloheisbeer.microwaffle400
 
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.content.ServiceConnection
 import android.os.Bundle
+import android.os.IBinder
 import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import org.json.JSONObject
+import androidx.core.content.ContextCompat
+import com.soloheisbeer.microwaffle400.audio.AudioManager
+import com.soloheisbeer.microwaffle400.network.ConnectionUpdateInterface
+import com.soloheisbeer.microwaffle400.network.NetworkManager
+import com.soloheisbeer.microwaffle400.service.MicroService
+import com.soloheisbeer.microwaffle400.service.ServiceUICommunicationInterface
+import com.soloheisbeer.microwaffle400.utils.MicroUtils
 
-interface UIUpdateInterface {
-    fun statusUpdate(status: JSONObject)
-    fun connectedToMicrowave()
-    fun disconnectedToMicrowave()
-}
-
-class MainActivity : AppCompatActivity(), UIUpdateInterface{
+class MainActivity : AppCompatActivity(),
+    ConnectionUpdateInterface,
+    ServiceUICommunicationInterface {
 
     private val TAG = "MAIN"
     private var timeInSeconds = 0
-    private val networkManager = NetworkManager
     private lateinit var timerText: TextView
-    private val microTimer = MicroTimer(::onTimerTick, ::onTimerFinish)
-    private val audioManager = AudioManager(this@MainActivity)
+    private val audioManager =
+        AudioManager(this@MainActivity)
+    private val networkManager = NetworkManager
     private var connectingDialog: AlertDialog? = null
+
+    private var microService: MicroService? = null
+    private val microServiceConnection: ServiceConnection = object : ServiceConnection {
+        override fun onServiceConnected(componentName: ComponentName, iBinder: IBinder) {
+            microService = (iBinder as MicroService.LocalBinder).service
+            microService!!.setServiceUICommunicationCallback(this@MainActivity)
+        }
+
+        override fun onServiceDisconnected(componentName: ComponentName) {
+            microService = null
+        }
+    }
 
     private val minSteps = 60 * 1
     private val secSteps = 10
@@ -48,16 +67,18 @@ class MainActivity : AppCompatActivity(), UIUpdateInterface{
         // set on-click listener
         startButton.setOnClickListener {
             if(timeInSeconds > 0) {
-                networkManager.startMicrowave(timeInSeconds)
-                microTimer.start(timeInSeconds)
+                MicroService.startService(this, timeInSeconds)
+                val intent = Intent(this, MicroService::class.java)
+                bindService(intent, microServiceConnection, Context.BIND_AUTO_CREATE)
                 audioManager.play("loop", true, 0.5f)
             }
             audioManager.play("up")
         }
 
         stopButton.setOnClickListener {
-            networkManager.stopMicrowave()
-            microTimer.stop()
+            MicroService.stopService(this)
+            if(microService != null)
+                unbindService(microServiceConnection)
             audioManager.play("down")
             audioManager.stop("loop")
             audioManager.stop("alarm")
@@ -97,7 +118,8 @@ class MainActivity : AppCompatActivity(), UIUpdateInterface{
         }
 
         showConnectingDialog()
-        networkManager.init(this)
+        networkManager.addConnectionUpdateCallback(this)
+        networkManager.connectToMicrowave()
     }
 
     private fun showConnectingDialog(){
@@ -114,68 +136,36 @@ class MainActivity : AppCompatActivity(), UIUpdateInterface{
         connectingDialog!!.show()
     }
 
-    override fun statusUpdate(status: JSONObject){
-        this@MainActivity.runOnUiThread(java.lang.Runnable {
-            if (status["running"] as Boolean) {
-                timeInSeconds = status["timeInSeconds"] as Int
-                if (microTimer.isRunning) {
-                    if (microTimer.time - timeInSeconds > secSteps) {
-                        val diff = timeInSeconds - microTimer.time
-                        microTimer.add(diff)
-                    }
-                } else {
-                    microTimer.start(timeInSeconds)
-                }
-            }
-        })
-    }
-
     override fun connectedToMicrowave() {
-        this@MainActivity.runOnUiThread(java.lang.Runnable {
+        this@MainActivity.runOnUiThread {
             connectingDialog!!.cancel()
-        })
+        }
     }
 
     override fun disconnectedToMicrowave() {
-        this@MainActivity.runOnUiThread(java.lang.Runnable {
+        this@MainActivity.runOnUiThread {
             showConnectingDialog()
-        })
+        }
     }
 
-    private fun onTimerTick(tis: Int){
-        //Sync timer every minute, not needed now as sever sends status update every tick
-//        if(microTimer.time > 0 && microTimer.time % 60 == 0){
-//            networkManager.sendStatusUpdateRequest()
-//        }
-//        else {
-//            timeInSeconds = tis
-//            updateTimerText()
-//        }
+    override fun onServiceTimerTick(tis: Int){
         timeInSeconds = tis
         updateTimerText()
         audioManager.play("down")
     }
 
-    private fun onTimerFinish(){
+    override fun onServiceTimerFinish(){
         audioManager.play("alarm", true)
         audioManager.stop("loop")
     }
 
-
     private fun updateTimerText(){
-        timerText.text = secondsToTimeString(timeInSeconds)
-    }
-
-    private fun secondsToTimeString(tis: Int): String{
-        val min  = tis / 60
-        val sec = tis % 60
-        return getString(R.string.timer, min, sec)
+        timerText.text = MicroUtils.secondsToTimeString(this, timeInSeconds)
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        networkManager.cleanUp()
-        microTimer.stop()
+        microService?.setServiceUICommunicationCallback(null)
         audioManager.cleanUp()
     }
 }

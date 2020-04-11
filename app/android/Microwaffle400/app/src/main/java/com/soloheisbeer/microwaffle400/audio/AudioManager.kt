@@ -1,4 +1,4 @@
-package com.soloheisbeer.microwaffle400
+package com.soloheisbeer.microwaffle400.audio
 
 import android.content.Context
 import android.media.MediaPlayer
