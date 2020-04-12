@@ -2,9 +2,16 @@ package com.soloheisbeer.microwaffle400.timer
 
 import android.os.CountDownTimer
 
-class MicroTimer(val onTickCb: (time: Int) -> Unit, val onFinishCb: () -> Unit) {
+interface TimerStatusInterface{
+    fun onTimerTick(timeLeftInSeconds: Int)
+    fun onTimerFinish()
+}
+
+class MicroTimer(tsu: TimerStatusInterface) {
 
     private var timer: CountDownTimer? = null
+    private val timerStatusCallback: TimerStatusInterface = tsu
+
     var time = 0
         private set
     var isRunning = false
@@ -18,11 +25,11 @@ class MicroTimer(val onTickCb: (time: Int) -> Unit, val onFinishCb: () -> Unit) 
 
             override fun onTick(millisUntilFinished: Long) {
                 time = (millisUntilFinished / 1000).toInt()
-                onTickCb(time)
+                timerStatusCallback.onTimerTick(time)
             }
 
             override fun onFinish() {
-                onFinishCb()
+                timerStatusCallback.onTimerFinish()
                 isRunning = false
             }
 
@@ -36,7 +43,6 @@ class MicroTimer(val onTickCb: (time: Int) -> Unit, val onFinishCb: () -> Unit) 
         timer?.cancel()
         timer = null
         time = 0
-        onTickCb(0)
         isRunning = false
     }
 

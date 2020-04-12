@@ -1,44 +1,46 @@
 package com.soloheisbeer.microwaffle400
 
-import android.content.ComponentName
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.ServiceConnection
+import android.content.IntentFilter
 import android.os.Bundle
-import android.os.IBinder
 import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 import com.soloheisbeer.microwaffle400.audio.AudioManager
 import com.soloheisbeer.microwaffle400.network.ConnectionUpdateInterface
 import com.soloheisbeer.microwaffle400.network.NetworkManager
+import com.soloheisbeer.microwaffle400.network.StatusUpdateInterface
 import com.soloheisbeer.microwaffle400.service.MicroService
-import com.soloheisbeer.microwaffle400.service.ServiceUICommunicationInterface
 import com.soloheisbeer.microwaffle400.utils.MicroUtils
+import org.json.JSONObject
+
 
 class MainActivity : AppCompatActivity(),
     ConnectionUpdateInterface,
-    ServiceUICommunicationInterface {
+    StatusUpdateInterface {
 
     private val TAG = "MAIN"
     private var timeInSeconds = 0
+    private var isRunning = false
     private lateinit var timerText: TextView
-    private val audioManager =
-        AudioManager(this@MainActivity)
+    private val audioManager = AudioManager(this@MainActivity)
     private val networkManager = NetworkManager
+    private  val microService = MicroService
     private var connectingDialog: AlertDialog? = null
 
-    private var microService: MicroService? = null
-    private val microServiceConnection: ServiceConnection = object : ServiceConnection {
-        override fun onServiceConnected(componentName: ComponentName, iBinder: IBinder) {
-            microService = (iBinder as MicroService.LocalBinder).service
-            microService!!.setServiceUICommunicationCallback(this@MainActivity)
-        }
-
-        override fun onServiceDisconnected(componentName: ComponentName) {
-            microService = null
+    private val receiver: BroadcastReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent) {
+            val action = intent.action
+            if (action == microService.ACTION_TIMER_TICK) {
+                val tis = intent.getIntExtra(microService.DATA_TIMER_TIME_LEFT, 0)
+                onTimerTick(tis)
+            }
+            else if (action == microService.ACTION_TIMER_FINISH) {
+                onTimerFinish()
+            }
         }
     }
 
@@ -49,6 +51,10 @@ class MainActivity : AppCompatActivity(),
         setTheme(R.style.AppTheme)
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        networkManager.addConnectionUpdateCallback(this)
+        networkManager.addStatusUpdateCallback(this)
+        networkManager.connectToMicrowave()
 
         audioManager.init()
         audioManager.play("boot")
@@ -66,19 +72,17 @@ class MainActivity : AppCompatActivity(),
 
         // set on-click listener
         startButton.setOnClickListener {
-            if(timeInSeconds > 0) {
-                MicroService.startService(this, timeInSeconds)
-                val intent = Intent(this, MicroService::class.java)
-                bindService(intent, microServiceConnection, Context.BIND_AUTO_CREATE)
+            if(timeInSeconds > 0 && !isRunning) {
+                microService.startService(this, timeInSeconds)
+                isRunning = true
                 audioManager.play("loop", true, 0.5f)
             }
             audioManager.play("up")
         }
 
         stopButton.setOnClickListener {
-            MicroService.stopService(this)
-            if(microService != null)
-                unbindService(microServiceConnection)
+            microService.stopService(this)
+            isRunning = false
             audioManager.play("down")
             audioManager.stop("loop")
             audioManager.stop("alarm")
@@ -117,9 +121,19 @@ class MainActivity : AppCompatActivity(),
             updateTimerText()
         }
 
-        showConnectingDialog()
-        networkManager.addConnectionUpdateCallback(this)
-        networkManager.connectToMicrowave()
+        if(!networkManager.isConnected)
+            showConnectingDialog()
+    }
+
+    override fun onStart() {
+        super.onStart()
+
+        audioManager.mute(false)
+
+        val filter = IntentFilter()
+        filter.addAction(microService.ACTION_TIMER_TICK)
+        filter.addAction(microService.ACTION_TIMER_FINISH)
+        registerReceiver(receiver, filter)
     }
 
     private fun showConnectingDialog(){
@@ -138,7 +152,7 @@ class MainActivity : AppCompatActivity(),
 
     override fun connectedToMicrowave() {
         this@MainActivity.runOnUiThread {
-            connectingDialog!!.cancel()
+            connectingDialog?.cancel()
         }
     }
 
@@ -148,24 +162,44 @@ class MainActivity : AppCompatActivity(),
         }
     }
 
-    override fun onServiceTimerTick(tis: Int){
+    override fun onStatusUpdate(status: JSONObject){
+        if (isRunning != (status["running"] as Boolean)) {
+            timeInSeconds = status["timeInSeconds"] as Int
+            isRunning = (status["running"] as Boolean)
+            if(isRunning){
+                microService.startService(this, timeInSeconds)
+            }
+        }
+    }
+
+    private fun onTimerTick(tis: Int){
         timeInSeconds = tis
         updateTimerText()
         audioManager.play("down")
     }
 
-    override fun onServiceTimerFinish(){
-        audioManager.play("alarm", true)
-        audioManager.stop("loop")
+    private fun onTimerFinish(){
+        if(timeInSeconds == 0) {
+            audioManager.play("alarm", true)
+            audioManager.stop("loop")
+        }
+        timeInSeconds = 0
+        updateTimerText()
+
     }
 
     private fun updateTimerText(){
         timerText.text = MicroUtils.secondsToTimeString(this, timeInSeconds)
     }
 
+    override fun onPause() {
+        super.onPause()
+        audioManager.mute(true)
+        unregisterReceiver(receiver)
+    }
+
     override fun onDestroy() {
         super.onDestroy()
-        microService?.setServiceUICommunicationCallback(null)
         audioManager.cleanUp()
     }
 }
