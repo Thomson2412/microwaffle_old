@@ -12,8 +12,8 @@ import com.soloheisbeer.microwaffle400.R
 import com.soloheisbeer.microwaffle400.network.NetworkManager
 import com.soloheisbeer.microwaffle400.network.StatusUpdateInterface
 import com.soloheisbeer.microwaffle400.timer.MicroTimer
+import com.soloheisbeer.microwaffle400.timer.MicroTimerState
 import com.soloheisbeer.microwaffle400.timer.TimerStatusInterface
-import com.soloheisbeer.microwaffle400.utils.MicroState
 import com.soloheisbeer.microwaffle400.utils.MicroUtils
 import org.json.JSONObject
 
@@ -33,31 +33,21 @@ class MicroService : Service(),
         private const val ACTION_SERVICE_PAUSE_TIMER = "ACTION_SERVICE_PAUSE_TIMER"
         private const val DATA_SERVICE_TIME = "DATA_TIME"
 
-        private var state = MicroState.IDLE
-        private var timeInSeconds = 0
-
-        fun initService(context: Context, timeInSeconds: Int) {
-            if (state != MicroState.RUNNING){
-                val startIntent = Intent(context, MicroService::class.java)
-                startIntent.action = ACTION_SERVICE_INIT
-                startIntent.putExtra(DATA_SERVICE_TIME, timeInSeconds)
-                ContextCompat.startForegroundService(context, startIntent)
-            }
-        }
-
-        fun startMicrowave(context: Context) {
+        fun startTimer(context: Context, timeInSeconds: Int) {
             val startIntent = Intent(context, MicroService::class.java)
+            startIntent.putExtra(DATA_SERVICE_TIME, timeInSeconds)
             startIntent.action = ACTION_SERVICE_START_TIMER
             ContextCompat.startForegroundService(context, startIntent)
         }
 
-        fun pauseMicrowave(context: Context) {
+        fun pauseTimer(context: Context, timeInSeconds: Int) {
             val startIntent = Intent(context, MicroService::class.java)
+            startIntent.putExtra(DATA_SERVICE_TIME, timeInSeconds)
             startIntent.action = ACTION_SERVICE_PAUSE_TIMER
             ContextCompat.startForegroundService(context, startIntent)
         }
 
-        fun stopMicrowave(context: Context) {
+        fun stopTimerAndService(context: Context) {
             val stopIntent = Intent(context, MicroService::class.java)
             stopIntent.action = ACTION_SERVICE_STOP
             ContextCompat.startForegroundService(context, stopIntent)
@@ -73,6 +63,8 @@ class MicroService : Service(),
 
     private lateinit var notificationManager: NotificationManager
 
+    private var state = MicroState.IDLE
+
     override fun onCreate() {
         super.onCreate()
         notificationManager = getSystemService(NotificationManager::class.java)!!
@@ -82,41 +74,30 @@ class MicroService : Service(),
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
 
         val tis = intent.getIntExtra(DATA_SERVICE_TIME, 0)
+        startForeground(notificationID, createNotification(tis))
 
         when(intent.action){
-            ACTION_SERVICE_INIT -> init(tis)
-            ACTION_SERVICE_START_TIMER -> start()
+            ACTION_SERVICE_START_TIMER -> start(tis)
             ACTION_SERVICE_PAUSE_TIMER -> pause()
             ACTION_SERVICE_STOP -> stop()
             else -> stopSelf()
         }
 
-
         return START_NOT_STICKY
     }
 
-    private fun init(tis: Int){
-        timeInSeconds = tis
-        startForeground(notificationID, createNotification(tis))
-        networkManager.sendStatusUpdateRequest()
-    }
-
-    private fun start(){
-        networkManager.startMicrowave(timeInSeconds)
-        microTimer.start(timeInSeconds)
-        state = MicroState.RUNNING
+    private fun start(tis: Int){
+        //microTimer.reset()
+        microTimer.set(tis)
+        microTimer.start()
     }
 
     private fun pause(){
-        networkManager.pauseMicrowave()
-        microTimer.stop()
-        state = MicroState.PAUSE
+        microTimer.pause()
     }
 
     private fun stop(){
-        networkManager.stopMicrowave()
-        microTimer.stop()
-        state = MicroState.IDLE
+        microTimer.reset()
         stopForeground(true)
         stopSelf()
     }
@@ -151,28 +132,26 @@ class MicroService : Service(),
 
         if(tempState != state) {
             state = tempState
-            timeInSeconds = tis
 
+            if (state == MicroState.RUNNING && microTimer.state != MicroTimerState.RUNNING) {
+                start(tis)
+            } else if (state == MicroState.PAUSE && microTimer.state != MicroTimerState.PAUSED) {
+                pause()
+            } else if (state == MicroState.IDLE && microTimer.state != MicroTimerState.NOT_SET) {
+                stop()
+            }
+        }
 
-            if (state == MicroState.RUNNING) {
-                if (microTimer.isRunning) {
-                    if (microTimer.timeInSeconds - tis > 10) {
-                        val diff = tis - microTimer.timeInSeconds
-                        microTimer.add(diff)
-                    }
-                } else {
-                    start()
-                }
-            } else if (state == MicroState.RUNNING) {
-                pause()
-            } else if (state == MicroState.IDLE) {
-                pause()
+        //Sync if too much out of sync
+        if (state == MicroState.RUNNING && microTimer.state == MicroTimerState.RUNNING) {
+            if (microTimer.timeInSeconds - tis > 10) {
+                val diff = tis - microTimer.timeInSeconds
+                microTimer.add(diff)
             }
         }
     }
 
     private fun createNotification(timeInSeconds: Int): Notification? {
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val serviceChannel = NotificationChannel(channelID, channelName,
                 NotificationManager.IMPORTANCE_LOW)
@@ -201,8 +180,8 @@ class MicroService : Service(),
 
     override fun onDestroy() {
         super.onDestroy()
-        if(microTimer.isRunning) {
-            microTimer.stop()
+        if(microTimer.state == MicroTimerState.RUNNING) {
+            microTimer.reset()
         }
         networkManager.removeStatusUpdateCallback(this)
     }

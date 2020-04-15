@@ -20,7 +20,7 @@ interface ConnectionUpdateInterface {
 object NetworkManager {
 
     //private const val microURL = "http://192.168.178.146:3000"
-    private const val microURL = "http://192.168.178.115:3000"
+    private const val microURL = "http://192.168.178.10:3000"
     private lateinit var socket: Socket
     private var statusUpdateCallbacks = ArrayList<StatusUpdateInterface>()
     private var connectionUpdateCallbacks = ArrayList<ConnectionUpdateInterface>()
@@ -41,8 +41,10 @@ object NetworkManager {
     object OnConnected : Emitter.Listener {
         override fun call(vararg args: Any?) {
             isConnected = true
-            for (cuc in connectionUpdateCallbacks) {
-                cuc.connectedToMicrowave()
+            synchronized(connectionUpdateCallbacks) {
+                for (cuc in connectionUpdateCallbacks) {
+                    cuc.connectedToMicrowave()
+                }
             }
         }
     }
@@ -50,8 +52,10 @@ object NetworkManager {
     object OnDisconnected : Emitter.Listener {
         override fun call(vararg args: Any?) {
             isConnected = false
-            for (cuc in connectionUpdateCallbacks) {
-                cuc.disconnectedToMicrowave()
+            synchronized(connectionUpdateCallbacks) {
+                for (cuc in connectionUpdateCallbacks) {
+                    cuc.disconnectedToMicrowave()
+                }
             }
         }
     }
@@ -59,8 +63,10 @@ object NetworkManager {
     object OnStatusUpdate : Emitter.Listener {
         override fun call(vararg args: Any?) {
             val data = args[0] as JSONObject
-            for (suc in statusUpdateCallbacks) {
-                suc.onStatusUpdate(data)
+            synchronized(statusUpdateCallbacks) {
+                for (suc in statusUpdateCallbacks) {
+                    suc.onStatusUpdate(data)
+                }
             }
         }
     }
@@ -92,18 +98,26 @@ object NetworkManager {
     }
 
     fun addStatusUpdateCallback(suc: StatusUpdateInterface){
-        statusUpdateCallbacks.add(suc)
+        synchronized(statusUpdateCallbacks) {
+            statusUpdateCallbacks.add(suc)
+        }
     }
 
     fun removeStatusUpdateCallback(suc: StatusUpdateInterface){
-        statusUpdateCallbacks.remove(suc)
+        synchronized(statusUpdateCallbacks) {
+            statusUpdateCallbacks.remove(suc)
+        }
     }
 
     fun addConnectionUpdateCallback(cuc: ConnectionUpdateInterface){
-        connectionUpdateCallbacks.add(cuc)
+        synchronized(connectionUpdateCallbacks) {
+            connectionUpdateCallbacks.add(cuc)
+        }
     }
 
     fun removeConnectionUpdateCallback(cuc: ConnectionUpdateInterface){
-        connectionUpdateCallbacks.remove(cuc)
+        synchronized(connectionUpdateCallbacks) {
+            connectionUpdateCallbacks.remove(cuc)
+        }
     }
 }

@@ -1,4 +1,4 @@
-package com.soloheisbeer.microwaffle400.utils
+package com.soloheisbeer.microwaffle400.service
 
 enum class MicroState {
     IDLE,

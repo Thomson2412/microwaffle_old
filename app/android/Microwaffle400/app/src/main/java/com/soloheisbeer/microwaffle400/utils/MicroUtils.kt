@@ -2,6 +2,7 @@ package com.soloheisbeer.microwaffle400.utils
 
 import android.content.Context
 import com.soloheisbeer.microwaffle400.R
+import com.soloheisbeer.microwaffle400.service.MicroState
 
 object MicroUtils {
     fun secondsToTimeString(context: Context, tis: Int): String{
