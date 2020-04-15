@@ -1,7 +1,10 @@
 const TAG = 'Timer';
 const utils = require('../utils/Utils');
+const timerState = require('../hardware/TimerState')
+
 const countdownIntervalMS = 1000;
 let timerIntervalFunction = null;
+let state = timerState.NOT_SET
 let timeInSeconds = 0;
 let isRunning = false;
 let timerUpdateCallback = null;
@@ -25,11 +28,13 @@ module.exports = class Timer {
             utils.log(TAG, "Timer needs a number in seconds to be set");
             return;
         }
-        if(isRunning){
-            utils.log(TAG, "Timer is already running");
+        if(state === timerState.RUNNING || state === timerState.PAUSED){
+            utils.log(TAG, "Timer is already running or paused");
             return;
         }
+
         timeInSeconds = ts;
+        state = timerState.SET
     }
 
     add (ts){
@@ -40,47 +45,41 @@ module.exports = class Timer {
         timeInSeconds += ts;
     }
 
-    subtract (ts){
-        if(!Number.isInteger(ts)){
-            utils.log(TAG, "Timer needs a number in seconds to be set");
-            return;
-        }
-        timeInSeconds -= ts;
-    }
-
     start (){
-        if(isRunning){
+        if(state === timerState.RUNNING){
             utils.log(TAG, "Timer is already running");
             return;
         }
-        isRunning = true;
-        this.countdown();
+        if(state === timerState.NOT_SET){
+            utils.log(TAG, "Timer is not set");
+            return;
+        }
+        state = timerState.RUNNING;
+        //this.countdown();
         timerIntervalFunction = setInterval(this.countdown, countdownIntervalMS);
     }
 
     pause (){
-        if(!isRunning){
+        if(state !== timerState.RUNNING){
             utils.log(TAG, "Timer is not running");
             return;
         }
         clearInterval(timerIntervalFunction);
-        isRunning = false;
+        state = timerState.PAUSED
     }
 
     reset (){
-        this.pause();
+        clearInterval(timerIntervalFunction);
         timeInSeconds = 0;
-        if(typeof timerDoneCallback == "function"){
-            timerDoneCallback();
-        }
+        state = timerState.NOT_SET
     }
 
     getCurrentTime(){
         return timeInSeconds;
     }
 
-    isRunning(){
-        return isRunning;
+    getState(){
+        return state;
     }
 
     countdown() {

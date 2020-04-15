@@ -1,5 +1,7 @@
 const utils = require('../utils/Utils');
-const timer = require('../utils/Timer');
+const timer = require('./Timer');
+const timerState = require('./TimerState');
+const hardwareState = require('../hardware/HardwareState');
 const config = require('../config.json');
 const Gpio = require('onoff').Gpio;
 const TAG = 'HardwareController';
@@ -21,10 +23,29 @@ module.exports = {
             utils.log(TAG,"No timer found, forgot init?");
             return;
         }
+        tm.reset()
         tm.set(timeInSeconds);
         setRelay(1);
         tm.start();
+
+        for(let key in statusUpdateCallbacks){
+            statusUpdateCallbacks[key](module.exports.getStatus());
+        }
     },
+
+    pause: function(){
+        if(tm == null) {
+            utils.log(TAG,"No timer found, forgot init?");
+            return;
+        }
+        setRelay(0);
+        tm.pause();
+
+        for(let key in statusUpdateCallbacks){
+            statusUpdateCallbacks[key](module.exports.getStatus());
+        }
+    },
+
     stop: function(){
         if(tm == null) {
             utils.log(TAG,"No timer found, forgot init?");
@@ -32,6 +53,10 @@ module.exports = {
         }
         setRelay(0);
         tm.reset();
+
+        for(let key in statusUpdateCallbacks){
+            statusUpdateCallbacks[key](module.exports.getStatus());
+        }
     },
 
     cleanUp: function (){
@@ -40,9 +65,18 @@ module.exports = {
         }
     },
 
-    getStatus: function (){
+    getStatus: function () {
+        let state = hardwareState.IDLE;
+        let stateOfTimer = tm.getState();
+        if (stateOfTimer === timerState.RUNNING){
+            state = hardwareState.RUNNING;
+        }
+        else if(stateOfTimer === timerState.PAUSED){
+            state = hardwareState.PAUSED;
+        }
+
         let json = {
-            "running": tm.isRunning(),
+            "state": state,
             "timeInSeconds": tm.getCurrentTime()
         }
         return json;
@@ -70,7 +104,7 @@ module.exports = {
 function timerUpdate(timeInSeconds) {
     utils.log(TAG,"Timer seconds left: " + timeInSeconds);
     for(let key in statusUpdateCallbacks){
-        statusUpdateCallbacks[key](module.exports.getStatus());
+        //statusUpdateCallbacks[key](module.exports.getStatus());
     }
 }
 

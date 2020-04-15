@@ -24,10 +24,14 @@ module.exports = class MessageHandler {
 
             socket.on("start", function(timeInSeconds){
                 utils.log(TAG, "start: " + timeInSeconds);
-                utils.log(TAG, "typeof msg:" + typeof timeInSeconds);
                 if(timeInSeconds > 0){
                     hardwareController.start(timeInSeconds);
                 }
+            });
+
+            socket.on("pause", function(){
+                utils.log(TAG, "pause");
+                hardwareController.pause();
             });
 
             socket.on("stop", function(){
@@ -36,8 +40,9 @@ module.exports = class MessageHandler {
             });
 
             socket.on("getStatus", function(){
-                utils.log(TAG, "stop");
-                socket.emit("statusUpdate", hardwareController.getStatus());
+                let status = hardwareController.getStatus();
+                utils.log(TAG, "getStatus: " + JSON.stringify(status));
+                socket.emit("statusUpdate", status);
             });
         });
     }
