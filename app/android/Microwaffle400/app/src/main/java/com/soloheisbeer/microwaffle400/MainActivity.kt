@@ -4,16 +4,20 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.graphics.Color
 import android.os.Bundle
 import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
 import com.soloheisbeer.microwaffle400.audio.AudioManager
 import com.soloheisbeer.microwaffle400.network.ConnectionUpdateInterface
 import com.soloheisbeer.microwaffle400.network.NetworkManager
 import com.soloheisbeer.microwaffle400.network.StatusUpdateInterface
 import com.soloheisbeer.microwaffle400.service.MicroService
+import com.soloheisbeer.microwaffle400.utils.MicroState
 import com.soloheisbeer.microwaffle400.utils.MicroUtils
 import org.json.JSONObject
 
@@ -24,12 +28,14 @@ class MainActivity : AppCompatActivity(),
 
     private val TAG = "MAIN"
     private var timeInSeconds = 0
-    private var isRunning = false
+    private var microState = MicroState.IDLE
     private lateinit var timerText: TextView
     private val audioManager = AudioManager(this@MainActivity)
     private val networkManager = NetworkManager
     private  val microService = MicroService
     private var connectingDialog: AlertDialog? = null
+
+    private var startButton: Button? = null
 
     private val receiver: BroadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent) {
@@ -52,17 +58,13 @@ class MainActivity : AppCompatActivity(),
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        networkManager.addConnectionUpdateCallback(this)
-        networkManager.addStatusUpdateCallback(this)
-        networkManager.connectToMicrowave()
-
         audioManager.init()
         audioManager.play("boot")
 
         timerText = findViewById(R.id.timer_text)
         updateTimerText()
 
-        val startButton = findViewById<Button>(R.id.button_start)
+        startButton = findViewById(R.id.button_start)
         val stopButton = findViewById<Button>(R.id.button_stop)
 
         val mpButton = findViewById<Button>(R.id.button_mp)
@@ -71,21 +73,39 @@ class MainActivity : AppCompatActivity(),
         val smButton = findViewById<Button>(R.id.button_sm)
 
         // set on-click listener
-        startButton.setOnClickListener {
-            if(timeInSeconds > 0 && !isRunning) {
-                microService.startService(this, timeInSeconds)
-                isRunning = true
-                audioManager.play("loop", true, 0.5f)
+        startButton!!.setOnClickListener {
+            if(timeInSeconds > 0) {
+
+                if (microState == MicroState.IDLE || microState == MicroState.PAUSE) {
+                    microService.initService(this, timeInSeconds)
+                    microService.startMicrowave(this)
+                    microState = MicroState.RUNNING
+                    audioManager.play("loop", true, 0.5f)
+                }
+                else if (microState == MicroState.RUNNING) {
+                    microService.pauseMicrowave(this)
+                    microState = MicroState.PAUSE
+                    audioManager.stop("loop")
+                }
+
+                updateStartButton(microState)
+                updateTimerText()
             }
             audioManager.play("up")
         }
 
         stopButton.setOnClickListener {
-            microService.stopService(this)
-            isRunning = false
+            if(microState == MicroState.RUNNING || microState == MicroState.PAUSE) {
+                microService.stopMicrowave(this)
+            }
+            microState = MicroState.IDLE
+            timeInSeconds = 0
             audioManager.play("down")
             audioManager.stop("loop")
             audioManager.stop("alarm")
+
+            updateStartButton(microState)
+            updateTimerText()
         }
 
         mpButton.setOnClickListener {
@@ -120,6 +140,10 @@ class MainActivity : AppCompatActivity(),
             audioManager.play("down")
             updateTimerText()
         }
+
+        networkManager.addConnectionUpdateCallback(this)
+        networkManager.addStatusUpdateCallback(this)
+        networkManager.connectToMicrowave()
 
         if(!networkManager.isConnected)
             showConnectingDialog()
@@ -163,11 +187,21 @@ class MainActivity : AppCompatActivity(),
     }
 
     override fun onStatusUpdate(status: JSONObject){
-        if (isRunning != (status["running"] as Boolean)) {
+        val tempState = MicroUtils.intToState(status["state"] as Int, MicroState.IDLE)
+
+        if (tempState != microState) {
             timeInSeconds = status["timeInSeconds"] as Int
-            isRunning = (status["running"] as Boolean)
-            if(isRunning){
-                microService.startService(this, timeInSeconds)
+            updateTimerText()
+
+            microState = tempState
+            updateStartButton(microState)
+
+            if(microState == MicroState.RUNNING){
+                microService.initService(this, timeInSeconds)
+                microService.startMicrowave(this)
+            }
+            else if(microState == MicroState.PAUSE){
+                microService.initService(this, timeInSeconds)
             }
         }
     }
@@ -190,6 +224,21 @@ class MainActivity : AppCompatActivity(),
 
     private fun updateTimerText(){
         timerText.text = MicroUtils.secondsToTimeString(this, timeInSeconds)
+    }
+
+    private fun updateStartButton(state: MicroState){
+        if(state == MicroState.RUNNING) {
+            startButton!!.text = getString(R.string.pause)
+            ViewCompat.setBackgroundTintList(
+                startButton!!,
+                ContextCompat.getColorStateList(this, R.color.button_pause))
+        }
+        else{
+            startButton!!.text = getString(R.string.start)
+            ViewCompat.setBackgroundTintList(
+                startButton!!,
+                ContextCompat.getColorStateList(this, R.color.button_start))
+        }
     }
 
     override fun onPause() {

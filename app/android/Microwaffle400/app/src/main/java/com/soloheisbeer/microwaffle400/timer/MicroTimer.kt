@@ -12,23 +12,24 @@ class MicroTimer(tsu: TimerStatusInterface) {
     private var timer: CountDownTimer? = null
     private val timerStatusCallback: TimerStatusInterface = tsu
 
-    var time = 0
+    var timeInSeconds = 0
         private set
     var isRunning = false
         private set
 
     fun start(sec: Int) {
-        if(sec <= 0)
+        if(sec <= 0 || isRunning)
             return
 
         timer = object: CountDownTimer((1000 * sec).toLong(), 1000) {
 
             override fun onTick(millisUntilFinished: Long) {
-                time = (millisUntilFinished / 1000).toInt()
-                timerStatusCallback.onTimerTick(time)
+                timeInSeconds = (millisUntilFinished / 1000).toInt()
+                timerStatusCallback.onTimerTick(timeInSeconds)
             }
 
             override fun onFinish() {
+                timeInSeconds = 0
                 timerStatusCallback.onTimerFinish()
                 isRunning = false
             }
@@ -42,12 +43,12 @@ class MicroTimer(tsu: TimerStatusInterface) {
     fun stop(){
         timer?.cancel()
         timer = null
-        time = 0
+        timeInSeconds = 0
         isRunning = false
     }
 
     fun add(sec: Int){
-        val newTime = time + sec
+        val newTime = timeInSeconds + sec
         if(newTime > 0) {
             stop()
             start(newTime)

@@ -9,4 +9,13 @@ object MicroUtils {
         val sec = tis % 60
         return context.getString(R.string.timer, min, sec)
     }
+
+    fun intToState(stateAsInt: Int, default: MicroState): MicroState {
+        return when(stateAsInt){
+            0 -> MicroState.IDLE
+            1 -> MicroState.RUNNING
+            2 -> MicroState.PAUSE
+            else -> default
+        }
+    }
 }

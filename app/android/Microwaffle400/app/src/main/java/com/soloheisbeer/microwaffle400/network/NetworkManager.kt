@@ -19,8 +19,8 @@ interface ConnectionUpdateInterface {
 
 object NetworkManager {
 
-    private const val microURL = "http://192.168.178.146:3000"
-    //private const val microURL = "http://192.168.178.115:3000"
+    //private const val microURL = "http://192.168.178.146:3000"
+    private const val microURL = "http://192.168.178.115:3000"
     private lateinit var socket: Socket
     private var statusUpdateCallbacks = ArrayList<StatusUpdateInterface>()
     private var connectionUpdateCallbacks = ArrayList<ConnectionUpdateInterface>()
@@ -72,6 +72,10 @@ object NetworkManager {
 
     fun startMicrowave(timeInSeconds: Int){
         socket.emit("start", timeInSeconds)
+    }
+
+    fun pauseMicrowave(){
+        socket.emit("pause")
     }
 
     fun stopMicrowave(){

@@ -25,7 +25,7 @@
                 android:layout_height="match_parent"
                 android:layout_weight="0.5"
                 android:layout_margin="5dp"
-                android:backgroundTint="@android:color/holo_blue_bright"
+                android:backgroundTint="@color/button_plus"
                 android:textColor="@android:color/holo_orange_light"
                 android:textSize="80sp"
                 android:text="@string/plus" />
@@ -36,7 +36,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="0.5"
                 android:layout_margin="5dp"
-                android:backgroundTint="@android:color/holo_blue_bright"
+                android:backgroundTint="@color/button_plus"
                 android:textColor="@android:color/holo_orange_light"
                 android:textSize="80sp"
                 android:text="@string/plus" />
@@ -63,7 +63,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="0.5"
                 android:layout_margin="5dp"
-                android:backgroundTint="@color/colorPrimaryDark"
+                android:backgroundTint="@color/button_minus"
                 android:textColor="@android:color/holo_orange_light"
                 android:textSize="80sp"
                 android:text="@string/minus" />
@@ -74,7 +74,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="0.5"
                 android:layout_margin="5dp"
-                android:backgroundTint="@color/colorPrimaryDark"
+                android:backgroundTint="@color/button_minus"
                 android:textColor="@android:color/holo_orange_light"
                 android:textSize="80sp"
                 android:text="@string/minus" />
@@ -91,7 +91,7 @@
                 android:layout_height="100dp"
                 android:layout_weight="0.5"
                 android:layout_margin="5dp"
-                android:backgroundTint="@android:color/holo_green_light"
+                android:backgroundTint="@color/button_start"
                 android:text="@string/start" />
 
             <Button
@@ -100,7 +100,7 @@
                 android:layout_height="100dp"
                 android:layout_weight="0.5"
                 android:layout_margin="5dp"
-                android:backgroundTint="@android:color/holo_red_light"
+                android:backgroundTint="@color/button_stop"
                 android:text="@string/stop" />
 
         </LinearLayout>
