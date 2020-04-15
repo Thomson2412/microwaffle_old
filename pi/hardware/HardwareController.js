@@ -8,6 +8,7 @@ const TAG = 'HardwareController';
 let relay = null;
 let tm = null;
 let statusUpdateCallbacks = {};
+let state = hardwareState.IDLE;
 
 module.exports = {
 
@@ -26,11 +27,12 @@ module.exports = {
         tm.reset()
         tm.set(timeInSeconds);
         setRelay(1);
-        tm.start();
+        state = hardwareState.RUNNING;
 
         for(let key in statusUpdateCallbacks){
             statusUpdateCallbacks[key](module.exports.getStatus());
         }
+        tm.start();
     },
 
     pause: function(){
@@ -40,6 +42,7 @@ module.exports = {
         }
         setRelay(0);
         tm.pause();
+        state = hardwareState.PAUSED;
 
         for(let key in statusUpdateCallbacks){
             statusUpdateCallbacks[key](module.exports.getStatus());
@@ -53,6 +56,7 @@ module.exports = {
         }
         setRelay(0);
         tm.reset();
+        state = hardwareState.IDLE;
 
         for(let key in statusUpdateCallbacks){
             statusUpdateCallbacks[key](module.exports.getStatus());
@@ -66,20 +70,10 @@ module.exports = {
     },
 
     getStatus: function () {
-        let state = hardwareState.IDLE;
-        let stateOfTimer = tm.getState();
-        if (stateOfTimer === timerState.RUNNING){
-            state = hardwareState.RUNNING;
-        }
-        else if(stateOfTimer === timerState.PAUSED){
-            state = hardwareState.PAUSED;
-        }
-
-        let json = {
+        return {
             "state": state,
             "timeInSeconds": tm.getCurrentTime()
-        }
-        return json;
+        };
     },
 
     addStatusUpdateCallback: function(id, callback){
@@ -109,9 +103,9 @@ function timerUpdate(timeInSeconds) {
 }
 
 function timerDone() {
-    setRelay(0);
+    module.exports.stop()
     for(let key in statusUpdateCallbacks){
-        statusUpdateCallbacks[key](module.exports.getStatus());
+        //statusUpdateCallbacks[key](module.exports.getStatus());
     }
 }
 
