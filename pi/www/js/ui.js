@@ -6,28 +6,39 @@ let timeInSeconds = 0;
 let working = true;
 let cm;
 let am;
+let tm;
 
-$( document ).ready(function() {
+let hardwareState = {
+    IDLE: 0,
+    RUNNING: 1,
+    PAUSE: 2
+}
+
+$( function() {
     am = new AudioManager();
     cm = new CommunicationManager(io, statusUpdateCallback);
+    tm = new UITimer(onTimerDone, onTimerTick);
 
-    $( "#startButton" ).click(function() {
+    $( "#startButton" ).on("click", function() {
         if(timeInSeconds > 0){
             cm.start(timeInSeconds);
             am.play("loop");
+            tm.set(timeInSeconds);
+            tm.start();
         }
         am.play("up");
     });
 
-    $( "#stopButton" ).click(function() {
+    $( "#stopButton" ).on("click", function() {
         cm.stop();
         am.play("down");
         am.stop("loop");
         am.stop("alarm");
+        tm.reset();
         working = false;
     });
 
-    $( "#plusMinute" ).click(function() {
+    $( "#plusMinute" ).on("click", function() {
         if(timeInSeconds + minuteStepping < maxSeconds) {
             timeInSeconds += minuteStepping;
             am.play("up");
@@ -35,7 +46,7 @@ $( document ).ready(function() {
         }
     });
 
-    $( "#plusSecond" ).click(function() {
+    $( "#plusSecond" ).on("click", function() {
         if(timeInSeconds + secondStepping < maxSeconds) {
             timeInSeconds += secondStepping;
             am.play("up");
@@ -43,7 +54,7 @@ $( document ).ready(function() {
         }
     });
 
-    $( "#minusMinute" ).click(function() {
+    $( "#minusMinute" ).on("click", function() {
         if(timeInSeconds - minuteStepping >= 0) {
             timeInSeconds -= minuteStepping;
             am.play("down");
@@ -51,7 +62,7 @@ $( document ).ready(function() {
         }
     });
 
-    $( "#minusSecond" ).click(function() {
+    $( "#minusSecond" ).on("click", function() {
         if(timeInSeconds - secondStepping >= 0) {
             timeInSeconds -= secondStepping
             am.play("down");
@@ -66,6 +77,17 @@ $( document ).ready(function() {
         {"filename": "loop.mp3", "loop": true, "volume": 0.5},
     ]);
 });
+
+function onTimerTick(tis){
+    timeInSeconds = tis;
+    am.play("down");
+    updateTimerUI()
+}
+
+function onTimerDone(){
+    am.stop("loop");
+    am.play("alarm");
+}
 
 function updateTimerUI(){
     let min = Math.floor(timeInSeconds / 60);
@@ -84,16 +106,9 @@ function updateUI(){
 }
 
 function statusUpdateCallback(status) {
-    if(timeInSeconds > status.timeInSeconds && working === true ){
-        am.play("down");
-    }
-    if(working === true && status.running === false){
-        am.stop("loop");
-        am.play("alarm");
-    }
-
-    timeInSeconds = status.timeInSeconds;
-    working = status.running;
+    if(Math.abs(status.timeInSeconds - timeInSeconds) > 2)
+        timeInSeconds = status.timeInSeconds;
+    working = status.state === hardwareState.RUNNING;
 
     updateTimerUI();
     updateUI();

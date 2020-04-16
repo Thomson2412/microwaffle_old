@@ -1,6 +1,14 @@
+let timerState = {
+    NOT_SET: 0,
+    SET: 1,
+    RUNNING: 2,
+    PAUSED: 3
+}
+
 const countdownIntervalMS = 1000;
 let timerIntervalFunction = null;
-let timeInSeconds = 0;
+let state = timerState.NOT_SET
+let timeInSecondsInTimer = 0;
 let isRunning = false;
 let timerUpdateCallback = null;
 let timerDoneCallback = null;
@@ -23,11 +31,13 @@ class UITimer {
             console.log("Timer needs a number in seconds to be set");
             return;
         }
-        if(isRunning){
-            console.log("Timer is already running");
+        if(state === timerState.RUNNING || state === timerState.PAUSED){
+            console.log("Timer is already running or paused");
             return;
         }
-        timeInSeconds = ts;
+
+        timeInSecondsInTimer = ts;
+        state = timerState.SET
     }
 
     add (ts){
@@ -35,56 +45,54 @@ class UITimer {
             console.log("Timer needs a number in seconds to be set");
             return;
         }
-        timeInSeconds += ts;
-    }
-
-    subtract (ts){
-        if(!Number.isInteger(ts)){
-            console.log("Timer needs a number in seconds to be set");
-            return;
-        }
-        timeInSeconds -= ts;
+        timeInSecondsInTimer += ts;
     }
 
     start (){
-        if(isRunning){
+        if(state === timerState.RUNNING){
             console.log("Timer is already running");
             return;
         }
-        isRunning = true;
+        if(state === timerState.NOT_SET){
+            console.log("Timer is not set");
+            return;
+        }
+        state = timerState.RUNNING;
+        this.countdown();
         timerIntervalFunction = setInterval(this.countdown, countdownIntervalMS);
     }
 
-    stop (){
-        if(!isRunning){
+    pause (){
+        if(state !== timerState.RUNNING){
             console.log("Timer is not running");
             return;
         }
         clearInterval(timerIntervalFunction);
-        isRunning = false;
+        state = timerState.PAUSED
     }
 
     reset (){
-        this.stop();
-        timeInSeconds = 0;
+        clearInterval(timerIntervalFunction);
+        timeInSecondsInTimer = 0;
+        state = timerState.NOT_SET
     }
 
     getCurrentTime(){
-        return timeInSeconds;
+        return timeInSecondsInTimer;
     }
 
-    isRunning(){
-        return isRunning;
+    getState(){
+        return state;
     }
 
     countdown() {
-        timeInSeconds--;
-        console.log("Timer remaining: " + timeInSeconds);
+        timeInSecondsInTimer--;
+        console.log("Timer remaining: " + timeInSecondsInTimer);
         if(typeof timerUpdateCallback == "function"){
-            timerUpdateCallback(timeInSeconds);
+            timerUpdateCallback(timeInSecondsInTimer);
         }
-        if(timeInSeconds <= 0){
-            timeInSeconds = 0;
+        if(timeInSecondsInTimer <= 0){
+            timeInSecondsInTimer = 0;
             clearInterval(timerIntervalFunction);
             isRunning = false;
             if(typeof timerDoneCallback == "function"){
@@ -92,4 +100,4 @@ class UITimer {
             }
         }
     }
-};
+}
