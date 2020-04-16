@@ -19,15 +19,9 @@ class MicroTimer(tsc: TimerStatusInterface) {
     private val timerStatusCallback: TimerStatusInterface = tsc
     private var timer = Timer()
 
-    private val countDownTask = object : TimerTask() {
-        override fun run() {
-            countDown()
-        }
-    }
-
     fun set(tis: Int){
         if(state == MicroTimerState.RUNNING || state == MicroTimerState.PAUSED){
-            return;
+            return
         }
 
         timeInSeconds = tis
@@ -46,8 +40,9 @@ class MicroTimer(tsc: TimerStatusInterface) {
             )
                 return
 
+            timer = Timer()
             state = MicroTimerState.RUNNING
-            timer.scheduleAtFixedRate(countDownTask, 0, countDownIntervalMS)
+            timer.scheduleAtFixedRate(CountDownTask(), 0, countDownIntervalMS)
         }
     }
 
@@ -78,6 +73,16 @@ class MicroTimer(tsc: TimerStatusInterface) {
         else {
             timeInSeconds--
             timerStatusCallback.onTimerTick(timeInSeconds)
+        }
+    }
+
+    inner class CountDownTask : TimerTask() {
+        override fun run() {
+            Thread {
+                run {
+                    countDown()
+                }
+            }.start()
         }
     }
 }
