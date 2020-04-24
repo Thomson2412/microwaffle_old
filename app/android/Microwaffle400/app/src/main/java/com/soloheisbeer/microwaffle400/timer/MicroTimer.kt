@@ -29,7 +29,9 @@ class MicroTimer(tsc: TimerStatusInterface) {
     }
 
     fun add(tis: Int){
-        timeInSeconds += tis
+        if(state == MicroTimerState.RUNNING || state == MicroTimerState.PAUSED){
+            timeInSeconds += tis
+        }
     }
 
     fun start() {

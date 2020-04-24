@@ -108,6 +108,10 @@ class MainActivity : AppCompatActivity(),
         mpButton!!.setOnClickListener {
             if(timeInSeconds < minSteps * 99) {
                 timeInSeconds += minSteps
+                if(microState == MicroState.RUNNING || microState == MicroState.PAUSE) {
+                    networkManager.addTimeToMicrowave(minSteps)
+                    microService.addTime(this, minSteps)
+                }
             }
             updateTimerText()
             audioManager.play("up")
@@ -116,6 +120,10 @@ class MainActivity : AppCompatActivity(),
         spButton!!.setOnClickListener {
             if(timeInSeconds < minSteps * 99) {
                 timeInSeconds += secSteps
+                if(microState == MicroState.RUNNING || microState == MicroState.PAUSE) {
+                    networkManager.addTimeToMicrowave(secSteps)
+                    microService.addTime(this, secSteps)
+                }
             }
             audioManager.play("up")
             updateTimerText()
@@ -124,6 +132,10 @@ class MainActivity : AppCompatActivity(),
         mmButton!!.setOnClickListener {
             if(timeInSeconds - minSteps >= 0) {
                 timeInSeconds -= minSteps
+                if(microState == MicroState.RUNNING || microState == MicroState.PAUSE) {
+                    networkManager.addTimeToMicrowave(minSteps * -1)
+                    microService.addTime(this, minSteps * -1)
+                }
             }
             audioManager.play("down")
             updateTimerText()
@@ -133,6 +145,10 @@ class MainActivity : AppCompatActivity(),
         smButton!!.setOnClickListener {
             if(timeInSeconds - secSteps >= 0) {
                 timeInSeconds -= secSteps
+                if(microState == MicroState.RUNNING || microState == MicroState.PAUSE) {
+                    networkManager.addTimeToMicrowave(secSteps * -1)
+                    microService.addTime(this, secSteps * -1)
+                }
             }
             audioManager.play("down")
             updateTimerText()
@@ -170,7 +186,7 @@ class MainActivity : AppCompatActivity(),
     }
 
     private fun pauseTimeService(tis: Int){
-        microService.pauseTimer(this, timeInSeconds)
+        microService.pauseTimer(this, tis)
         audioManager.stop("loop")
         updateTimerText()
     }
@@ -260,10 +276,8 @@ class MainActivity : AppCompatActivity(),
     }
 
     private fun onTimerFinish(){
-        if(timeInSeconds == 0) {
-            audioManager.play("alarm", true)
-            audioManager.stop("loop")
-        }
+        audioManager.play("alarm", true)
+        audioManager.stop("loop")
         timeInSeconds = 0
         updateTimerText()
 

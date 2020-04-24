@@ -30,6 +30,7 @@ class MicroService : Service(),
         private const val ACTION_SERVICE_INIT = "ACTION_SERVICE_INIT"
         private const val ACTION_SERVICE_STOP = "ACTION_SERVICE_STOP"
         private const val ACTION_SERVICE_START_TIMER = "ACTION_SERVICE_START_TIMER"
+        private const val ACTION_SERVICE_ADD_TIME_TIMER = "ACTION_SERVICE_ADD_TIME_TIMER"
         private const val ACTION_SERVICE_PAUSE_TIMER = "ACTION_SERVICE_PAUSE_TIMER"
         private const val DATA_SERVICE_TIME = "DATA_TIME"
 
@@ -51,6 +52,13 @@ class MicroService : Service(),
             val stopIntent = Intent(context, MicroService::class.java)
             stopIntent.action = ACTION_SERVICE_STOP
             ContextCompat.startForegroundService(context, stopIntent)
+        }
+
+        fun addTime(context: Context, timeInSeconds: Int) {
+            val startIntent = Intent(context, MicroService::class.java)
+            startIntent.putExtra(DATA_SERVICE_TIME, timeInSeconds)
+            startIntent.action = ACTION_SERVICE_ADD_TIME_TIMER
+            ContextCompat.startForegroundService(context, startIntent)
         }
     }
 
@@ -78,6 +86,7 @@ class MicroService : Service(),
 
         when(intent.action){
             ACTION_SERVICE_START_TIMER -> start(tis)
+            ACTION_SERVICE_ADD_TIME_TIMER -> addTime(tis)
             ACTION_SERVICE_PAUSE_TIMER -> pause()
             ACTION_SERVICE_STOP -> stop()
             else -> stopSelf()
@@ -87,7 +96,6 @@ class MicroService : Service(),
     }
 
     private fun start(tis: Int){
-        //microTimer.reset()
         microTimer.set(tis)
         microTimer.start()
     }
@@ -100,6 +108,10 @@ class MicroService : Service(),
         microTimer.reset()
         stopForeground(true)
         stopSelf()
+    }
+
+    private fun addTime(timeInSeconds: Int){
+        microTimer.add(timeInSeconds)
     }
 
     override fun onBind(intent: Intent): IBinder? {
