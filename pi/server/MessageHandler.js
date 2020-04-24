@@ -39,6 +39,11 @@ module.exports = class MessageHandler {
                 hardwareController.stop();
             });
 
+            socket.on("addTime", function(timeInSeconds){
+                utils.log(TAG, "addTime: " + timeInSeconds);
+                hardwareController.addTime(timeInSeconds);
+            });
+
             socket.on("getStatus", function(){
                 let status = hardwareController.getStatus();
                 utils.log(TAG, "getStatus: " + JSON.stringify(status));

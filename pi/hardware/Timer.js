@@ -38,6 +38,14 @@ module.exports = class Timer {
     }
 
     add (ts){
+        if(state === timerState.NOT_SET){
+            utils.log(TAG, "Timer is not set");
+            return;
+        }
+        if(state === timerState.SET){
+            utils.log(TAG, "Timer is not running or paused");
+            return;
+        }
         if(!Number.isInteger(ts)){
             utils.log(TAG, "Timer needs a number in seconds to be set");
             return;

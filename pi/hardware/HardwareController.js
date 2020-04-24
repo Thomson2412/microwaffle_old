@@ -1,6 +1,5 @@
 const utils = require('../utils/Utils');
 const timer = require('./Timer');
-const timerState = require('./TimerState');
 const hardwareState = require('../hardware/HardwareState');
 const config = require('../config.json');
 const Gpio = require('onoff').Gpio;
@@ -61,6 +60,18 @@ module.exports = {
         for(let key in statusUpdateCallbacks){
             statusUpdateCallbacks[key](module.exports.getStatus());
         }
+    },
+
+    addTime: function(timeInSeconds){
+        if(tm == null) {
+            utils.log(TAG,"No timer found, forgot init?");
+            return;
+        }
+        if(state === hardwareState.IDLE) {
+            utils.log(TAG,"Not running");
+            return;
+        }
+        tm.add(timeInSeconds);
     },
 
     cleanUp: function (){
