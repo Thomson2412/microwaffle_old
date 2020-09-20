@@ -1,6 +1,6 @@
 {
   "server": {
-    "node_port": 3000,
+    "node_port": 80,
     "web_dir": "www"
   },
   "hardware": {
