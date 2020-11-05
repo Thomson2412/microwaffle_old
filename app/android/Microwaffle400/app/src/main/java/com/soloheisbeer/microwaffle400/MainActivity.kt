@@ -1,21 +1,61 @@
 package com.soloheisbeer.microwaffle400
 
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.os.Bundle
 import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import com.soloheisbeer.microwaffle400.audio.AudioManager
+import com.soloheisbeer.microwaffle400.network.ConnectionUpdateInterface
+import com.soloheisbeer.microwaffle400.network.NetworkManager
+import com.soloheisbeer.microwaffle400.network.StatusUpdateInterface
+import com.soloheisbeer.microwaffle400.service.MicroService
+import com.soloheisbeer.microwaffle400.service.MicroState
+import com.soloheisbeer.microwaffle400.utils.MicroUtils
 import org.json.JSONObject
+import kotlin.math.abs
 
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(),
+    ConnectionUpdateInterface,
+    StatusUpdateInterface {
 
     private val TAG = "MAIN"
     private var timeInSeconds = 0
-    private val networkManager = NetworkManager()
+    private var microState = MicroState.IDLE
+    private var enableUIOnStateChange = false
     private lateinit var timerText: TextView
-    private val microTimer = MicroTimer(::onTimerTick, ::onTimerFinish)
     private val audioManager = AudioManager(this@MainActivity)
+    private val networkManager = NetworkManager
+    private  val microService = MicroService
+    private var connectingDialog: AlertDialog? = null
+
+    private var startButton: Button? = null
+    private var stopButton: Button? = null
+
+    private var mpButton: Button? = null
+    private var spButton: Button? = null
+    private var mmButton: Button? = null
+    private var smButton: Button? = null
+
+    private val receiver: BroadcastReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent) {
+            val action = intent.action
+            if (action == microService.ACTION_TIMER_TICK) {
+                val tis = intent.getIntExtra(microService.DATA_TIMER_TIME_LEFT, 0)
+                onTimerTick(tis)
+            }
+            else if (action == microService.ACTION_TIMER_FINISH) {
+                onTimerFinish()
+            }
+        }
+    }
 
     private val minSteps = 60 * 1
     private val secSteps = 10
@@ -31,128 +71,259 @@ class MainActivity : AppCompatActivity() {
         timerText = findViewById(R.id.timer_text)
         updateTimerText()
 
-        val startButton = findViewById<Button>(R.id.button_start)
-        val stopButton = findViewById<Button>(R.id.button_stop)
+        startButton = findViewById(R.id.button_start)
+        stopButton = findViewById(R.id.button_stop)
 
-        val mpButton = findViewById<Button>(R.id.button_mp)
-        val spButton = findViewById<Button>(R.id.button_sp)
-        val mmButton = findViewById<Button>(R.id.button_mm)
-        val smButton = findViewById<Button>(R.id.button_sm)
-
-        updateSate()
+        mpButton = findViewById(R.id.button_mp)
+        spButton = findViewById(R.id.button_sp)
+        mmButton = findViewById(R.id.button_mm)
+        smButton = findViewById(R.id.button_sm)
 
         // set on-click listener
-        startButton.setOnClickListener {
+        startButton!!.setOnClickListener {
             if(timeInSeconds > 0) {
-                networkManager.startMicrowave(timeInSeconds)
-                microTimer.start(timeInSeconds)
-                audioManager.play("loop", true, 0.5f)
-            }
-            audioManager.play("up")
-        }
 
-        stopButton.setOnClickListener {
-            networkManager.stopMicrowave()
-            microTimer.stop()
-            audioManager.play("down")
-            audioManager.stop("loop")
-            audioManager.stop("alarm")
-        }
-
-        mpButton.setOnClickListener {
-            if(timeInSeconds < minSteps * 99) {
-                timeInSeconds += minSteps
-            }
-            updateTimerText()
-            audioManager.play("up")
-        }
-
-        spButton.setOnClickListener {
-            if(timeInSeconds < minSteps * 99) {
-                timeInSeconds += secSteps
-            }
-            audioManager.play("up")
-            updateTimerText()
-        }
-
-        mmButton.setOnClickListener {
-            if(timeInSeconds - minSteps >= 0) {
-                timeInSeconds -= minSteps
-            }
-            audioManager.play("down")
-            updateTimerText()
-        }
-
-
-        smButton.setOnClickListener {
-            if(timeInSeconds - secSteps >= 0) {
-                timeInSeconds -= secSteps
-            }
-            audioManager.play("down")
-            updateTimerText()
-        }
-    }
-
-    fun updateSate(){
-        val status = networkManager.getStatus()
-        if(status == null){
-            val alertDialog: AlertDialog = AlertDialog.Builder(this@MainActivity).create()
-            alertDialog.setTitle("Microwaffle not found")
-            alertDialog.setMessage("Clossing you mofo")
-            alertDialog.setCancelable(false)
-            alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "OK") { dialog, _ -> dialog.dismiss(); this.finishAffinity() }
-            alertDialog.show()
-
-            return
-        }
-
-
-        val statusJson = JSONObject(status)
-        if(statusJson["busy"] as Boolean) {
-            timeInSeconds = statusJson["timer"] as Int
-            if(microTimer.isRunning){
-                if(microTimer.time - timeInSeconds > secSteps) {
-                    val diff = timeInSeconds - microTimer.time
-                    microTimer.add(diff)
+                if (microState == MicroState.IDLE || microState == MicroState.PAUSE) {
+                    startMicrowave()
+                    enableUIOnStateChange = true
+                    setEnableUI(false)
+                }
+                else if (microState == MicroState.RUNNING) {
+                    pauseMicrowave()
+                    enableUIOnStateChange = true
+                    setEnableUI(false)
                 }
             }
-            else {
-                microTimer.start(timeInSeconds)
+            audioManager.play("up")
+        }
+
+        stopButton!!.setOnClickListener {
+            if(microState == MicroState.RUNNING || microState == MicroState.PAUSE) {
+                stopMicrowave()
+                enableUIOnStateChange = true
+                setEnableUI(false)
+            }
+        }
+
+        mpButton!!.setOnClickListener {
+            if(timeInSeconds < minSteps * 99) {
+                timeInSeconds += minSteps
+                if(microState == MicroState.RUNNING || microState == MicroState.PAUSE) {
+                    networkManager.addTimeToMicrowave(minSteps)
+                    microService.addTime(this, minSteps)
+                }
             }
             updateTimerText()
+            audioManager.play("up")
+        }
+
+        spButton!!.setOnClickListener {
+            if(timeInSeconds < minSteps * 99) {
+                timeInSeconds += secSteps
+                if(microState == MicroState.RUNNING || microState == MicroState.PAUSE) {
+                    networkManager.addTimeToMicrowave(secSteps)
+                    microService.addTime(this, secSteps)
+                }
+            }
+            audioManager.play("up")
+            updateTimerText()
+        }
+
+        mmButton!!.setOnClickListener {
+            if(timeInSeconds - minSteps >= 0) {
+                timeInSeconds -= minSteps
+                if(microState == MicroState.RUNNING || microState == MicroState.PAUSE) {
+                    networkManager.addTimeToMicrowave(minSteps * -1)
+                    microService.addTime(this, minSteps * -1)
+                }
+            }
+            audioManager.play("down")
+            updateTimerText()
+        }
+
+
+        smButton!!.setOnClickListener {
+            if(timeInSeconds - secSteps >= 0) {
+                timeInSeconds -= secSteps
+                if(microState == MicroState.RUNNING || microState == MicroState.PAUSE) {
+                    networkManager.addTimeToMicrowave(secSteps * -1)
+                    microService.addTime(this, secSteps * -1)
+                }
+            }
+            audioManager.play("down")
+            updateTimerText()
+        }
+
+        networkManager.addConnectionUpdateCallback(this)
+        networkManager.addStatusUpdateCallback(this)
+        networkManager.connectToMicrowave()
+
+        if(!networkManager.isConnected)
+            showConnectingDialog()
+    }
+
+    override fun onStart() {
+        super.onStart()
+
+        audioManager.mute(false)
+
+        val filter = IntentFilter()
+        filter.addAction(microService.ACTION_TIMER_TICK)
+        filter.addAction(microService.ACTION_TIMER_FINISH)
+        registerReceiver(receiver, filter)
+    }
+
+    private fun startTimeService(tis: Int){
+        microService.startTimer(this, tis)
+        audioManager.play("loop", true, 0.5f)
+        updateTimerText()
+    }
+
+    private fun startMicrowave(){
+        if (microState == MicroState.IDLE || microState == MicroState.PAUSE) {
+            networkManager.startMicrowave(timeInSeconds)
         }
     }
 
-    fun onTimerTick(tis: Int){
-        if(microTimer.time > 0 && microTimer.time % 60 == 0){
-            updateSate()
+    private fun pauseTimeService(tis: Int){
+        microService.pauseTimer(this, tis)
+        audioManager.stop("loop")
+        updateTimerText()
+    }
+
+    private fun pauseMicrowave(){
+        if (microState == MicroState.RUNNING) {
+            networkManager.pauseMicrowave()
         }
-        else {
-            timeInSeconds = tis
+    }
+
+    private fun stopTimeService(){
+        microService.stopTimerAndService(this)
+        timeInSeconds = 0
+        audioManager.play("down")
+        audioManager.stop("loop")
+        audioManager.stop("alarm")
+        updateTimerText()
+    }
+
+    private fun stopMicrowave(){
+        if(microState == MicroState.RUNNING || microState == MicroState.PAUSE) {
+            networkManager.stopMicrowave()
+        }
+    }
+
+    private fun showConnectingDialog(){
+        connectingDialog = AlertDialog.Builder(this@MainActivity).create()
+        connectingDialog!!.setTitle(
+            getString(R.string.connecting_dialog_title, getString(R.string.app_name)))
+        connectingDialog!!.setMessage(
+            getString(R.string.connecting_dialog_content, getString(R.string.app_name)))
+        connectingDialog!!.setCancelable(false)
+        connectingDialog!!.setButton(
+            AlertDialog.BUTTON_NEUTRAL, getString(R.string.connecting_dialog_dismiss)) {
+                dialog, _ -> dialog.dismiss(); this.finishAffinity()
+        }
+        connectingDialog!!.show()
+    }
+
+    override fun connectedToMicrowave() {
+        this@MainActivity.runOnUiThread {
+            connectingDialog?.cancel()
+        }
+    }
+
+    override fun disconnectedToMicrowave() {
+        this@MainActivity.runOnUiThread {
+            showConnectingDialog()
+        }
+    }
+
+    override fun onStatusUpdate(status: JSONObject){
+        val tempState = MicroUtils.intToState(status["state"] as Int, MicroState.IDLE)
+
+        if (tempState != microState) {
+            val tempTis = status["timeInSeconds"] as Int
             updateTimerText()
+
+            updateStartButton(tempState)
+
+            if(enableUIOnStateChange)
+                setEnableUI(true)
+
+            when (tempState) {
+                MicroState.RUNNING -> {
+                    timeInSeconds = if(abs(timeInSeconds - tempTis) > 2) tempTis else timeInSeconds
+                    startTimeService(timeInSeconds)
+                }
+                MicroState.PAUSE -> {
+                    timeInSeconds = if(abs(timeInSeconds - tempTis) > 2) tempTis else timeInSeconds
+                    pauseTimeService(timeInSeconds)
+                }
+                MicroState.IDLE -> {
+                    stopTimeService()
+                }
+            }
+
+            microState = tempState
+            timeInSeconds =  tempTis
         }
+    }
+
+    private fun onTimerTick(tis: Int){
+        timeInSeconds = tis
+        updateTimerText()
         audioManager.play("down")
     }
 
-    fun onTimerFinish(){
+    private fun onTimerFinish(){
         audioManager.play("alarm", true)
         audioManager.stop("loop")
+        timeInSeconds = 0
+        updateTimerText()
+
     }
 
-
-    fun updateTimerText(){
-        timerText.setText(secondsToTimeString(timeInSeconds))
+    private fun updateTimerText(){
+        timerText.text = MicroUtils.secondsToTimeString(this, timeInSeconds)
     }
 
-    fun secondsToTimeString(tis: Int): String{
-        val min  = tis / 60
-        val sec = tis % 60
-        return getString(R.string.timer, min, sec)
+    private fun updateStartButton(state: MicroState){
+        if(state == MicroState.RUNNING) {
+            startButton!!.text = getString(R.string.pause)
+            ViewCompat.setBackgroundTintList(
+                startButton!!,
+                ContextCompat.getColorStateList(this, R.color.button_pause))
+        }
+        else{
+            startButton!!.text = getString(R.string.start)
+            ViewCompat.setBackgroundTintList(
+                startButton!!,
+                ContextCompat.getColorStateList(this, R.color.button_start))
+        }
+    }
+
+    private fun setEnableUI(enable: Boolean){
+        this@MainActivity.runOnUiThread {
+            startButton!!.isEnabled = enable
+            stopButton!!.isEnabled = enable
+
+            mpButton!!.isEnabled = enable
+            spButton!!.isEnabled = enable
+            mmButton!!.isEnabled = enable
+            smButton!!.isEnabled = enable
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        audioManager.mute(true)
+        unregisterReceiver(receiver)
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        microTimer.stop()
         audioManager.cleanUp()
+        networkManager.removeConnectionUpdateCallback(this)
+        networkManager.removeStatusUpdateCallback(this)
     }
 }
