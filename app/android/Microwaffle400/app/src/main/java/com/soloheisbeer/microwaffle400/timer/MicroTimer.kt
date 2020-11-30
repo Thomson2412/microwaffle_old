@@ -72,11 +72,11 @@ class MicroTimer(tsc: TimerStatusInterface) {
     }
 
     private fun countDown(){
+        timeInSeconds--
         if(timeInSeconds <= 0) {
             timerStatusCallback.onTimerFinish()
         }
         else {
-            timeInSeconds--
             timerStatusCallback.onTimerTick(timeInSeconds)
         }
         Log.d(TAG, "Time remaining: $timeInSeconds")

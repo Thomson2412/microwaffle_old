@@ -100,6 +100,7 @@ class MainActivity : AppCompatActivity(),
         stopButton!!.setOnClickListener {
             if(microState == MicroState.RUNNING || microState == MicroState.PAUSE) {
                 stopMicrowave()
+                stopTimeService()
                 enableUIOnStateChange = true
                 setEnableUI(false)
             }
@@ -257,7 +258,9 @@ class MainActivity : AppCompatActivity(),
                     pauseTimeService(timeInSeconds)
                 }
                 MicroState.IDLE -> {
-                    stopTimeService()
+                    //Don't stop current timer if status update is close to 0
+                    if(timeInSeconds - tempTis > 5)
+                        stopTimeService()
                 }
             }
 

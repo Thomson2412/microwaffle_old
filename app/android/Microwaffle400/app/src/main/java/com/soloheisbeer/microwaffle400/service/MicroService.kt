@@ -3,6 +3,8 @@ package com.soloheisbeer.microwaffle400.service
 import android.app.*
 import android.content.Context
 import android.content.Intent
+import android.media.AudioAttributes
+import android.net.Uri
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
@@ -16,6 +18,7 @@ import com.soloheisbeer.microwaffle400.timer.MicroTimerState
 import com.soloheisbeer.microwaffle400.timer.TimerStatusInterface
 import com.soloheisbeer.microwaffle400.utils.MicroUtils
 import org.json.JSONObject
+
 
 class MicroService : Service(),
     StatusUpdateInterface,
@@ -63,8 +66,10 @@ class MicroService : Service(),
     }
 
     private val notificationID = 1001
-    private val channelID = "MicroService"
-    private val channelName = "$channelID channel"
+    private val channelTimerID = "MicroServiceTimer"
+    private val channelTimerName = "Timer"
+    private val channelFinishID = "MicroServiceTimerFinish"
+    private val channelFinishName = "Alarm"
 
     private val networkManager = NetworkManager
     private val microTimer = MicroTimer(this)
@@ -82,7 +87,7 @@ class MicroService : Service(),
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
 
         val tis = intent.getIntExtra(DATA_SERVICE_TIME, 0)
-        startForeground(notificationID, createNotification(tis))
+        startForeground(notificationID, createTimerNotification(tis))
 
         when(intent.action){
             ACTION_SERVICE_START_TIMER -> start(tis)
@@ -119,7 +124,7 @@ class MicroService : Service(),
     }
 
     override fun onTimerTick(timeLeftInSeconds: Int){
-        notificationManager.notify(notificationID, createNotification(timeLeftInSeconds))
+        notificationManager.notify(notificationID, createTimerNotification(timeLeftInSeconds))
         Intent().also { intent ->
             intent.action = ACTION_TIMER_TICK
             intent.putExtra(DATA_TIMER_TIME_LEFT, timeLeftInSeconds)
@@ -136,6 +141,7 @@ class MicroService : Service(),
             sendBroadcast(intent)
         }
         stopSelf()
+        notificationManager.notify(notificationID, createFinishNotification())
     }
 
     override fun onStatusUpdate(status: JSONObject){
@@ -163,10 +169,12 @@ class MicroService : Service(),
         }
     }
 
-    private fun createNotification(timeInSeconds: Int): Notification? {
+    private fun createTimerNotification(timeInSeconds: Int): Notification? {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val serviceChannel = NotificationChannel(channelID, channelName,
-                NotificationManager.IMPORTANCE_LOW)
+            val serviceChannel = NotificationChannel(
+                channelTimerID, channelTimerName,
+                NotificationManager.IMPORTANCE_LOW
+            )
 
             notificationManager.createNotificationChannel(serviceChannel)
         }
@@ -177,16 +185,52 @@ class MicroService : Service(),
             0, notificationIntent, 0
         )
 
-        return NotificationCompat.Builder(this, channelID)
+        return NotificationCompat.Builder(this, channelTimerID)
             .setContentTitle(getString(R.string.app_name))
             .setContentText(MicroUtils.secondsToTimeString(this, timeInSeconds))
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.logo)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setColor(getColor(R.color.colorAccent))
             .setColorized(true)
             .setSound(null)
+            .build()
+    }
+
+    private fun createFinishNotification(): Notification? {
+
+        val sound = Uri.parse("android.resource://" + this.packageName + "/" + R.raw.alarm);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val serviceChannel = NotificationChannel(
+                channelFinishID, channelFinishName,
+                NotificationManager.IMPORTANCE_HIGH
+            )
+            serviceChannel.description = getString(R.string.notification_finish)
+
+            val audioAttributes = AudioAttributes.Builder()
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .setUsage(AudioAttributes.USAGE_ALARM)
+                .build()
+
+            serviceChannel.setSound(sound, audioAttributes)
+            serviceChannel.enableLights(true)
+            serviceChannel.lightColor = R.color.colorAccent
+            serviceChannel.enableVibration(true)
+            serviceChannel.vibrationPattern =
+                longArrayOf(100, 200, 300, 400, 500, 400, 300, 200, 400)
+
+            notificationManager.createNotificationChannel(serviceChannel)
+        }
+
+        return NotificationCompat.Builder(this, channelFinishID)
+            .setContentTitle(getString(R.string.app_name))
+            .setContentText(getString(R.string.notification_finish))
+            .setSmallIcon(R.drawable.logo)
+            .setColor(getColor(R.color.colorAccent))
+            .setColorized(true)
+            .setVibrate(longArrayOf(100, 200, 300, 400, 500, 400, 300, 200, 400))
+            .setSound(sound)
             .build()
     }
 

@@ -13,4 +13,5 @@
     <string name="stop">Stop</string>
 
     <string name="timer">%1$02d:%2$02d</string>
+    <string name="notification_finish">Eating time!!</string>
 </resources>
