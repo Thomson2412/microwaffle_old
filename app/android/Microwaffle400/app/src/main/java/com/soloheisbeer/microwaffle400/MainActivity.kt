@@ -166,6 +166,7 @@ class MainActivity : AppCompatActivity(),
         super.onStart()
 
         audioManager.mute(false)
+        networkManager.sendStatusUpdateRequest()
 
         val filter = IntentFilter()
         filter.addAction(microService.ACTION_TIMER_TICK)
@@ -202,7 +203,6 @@ class MainActivity : AppCompatActivity(),
         timeInSeconds = 0
         audioManager.play("down")
         audioManager.stop("loop")
-        audioManager.stop("alarm")
         updateTimerText()
     }
 
@@ -243,9 +243,6 @@ class MainActivity : AppCompatActivity(),
 
         if (tempState != microState) {
             val tempTis = status["timeInSeconds"] as Int
-            updateTimerText()
-
-            updateStartButton(tempState)
 
             if(enableUIOnStateChange)
                 setEnableUI(true)
@@ -266,6 +263,8 @@ class MainActivity : AppCompatActivity(),
 
             microState = tempState
             timeInSeconds =  tempTis
+            updateTimerText()
+            updateStartButton(tempState)
         }
     }
 
@@ -276,11 +275,9 @@ class MainActivity : AppCompatActivity(),
     }
 
     private fun onTimerFinish(){
-        audioManager.play("alarm", true)
         audioManager.stop("loop")
         timeInSeconds = 0
         updateTimerText()
-
     }
 
     private fun updateTimerText(){

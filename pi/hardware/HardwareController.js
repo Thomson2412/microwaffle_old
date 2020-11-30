@@ -108,16 +108,16 @@ module.exports = {
 
 function timerUpdate(timeInSeconds) {
     utils.log(TAG,"Timer seconds left: " + timeInSeconds);
-    for(let key in statusUpdateCallbacks){
-        //statusUpdateCallbacks[key](module.exports.getStatus());
-    }
+    // for(let key in statusUpdateCallbacks){
+    //     statusUpdateCallbacks[key](module.exports.getStatus());
+    // }
 }
 
 function timerDone() {
     module.exports.stop()
-    for(let key in statusUpdateCallbacks){
-        //statusUpdateCallbacks[key](module.exports.getStatus());
-    }
+    // for(let key in statusUpdateCallbacks){
+    //     statusUpdateCallbacks[key](module.exports.getStatus());
+    // }
 }
 
 function setRelay(value) {

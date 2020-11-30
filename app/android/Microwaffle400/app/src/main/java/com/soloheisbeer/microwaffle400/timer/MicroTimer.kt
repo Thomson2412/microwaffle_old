@@ -1,5 +1,6 @@
 package com.soloheisbeer.microwaffle400.timer
 
+import android.util.Log
 import java.util.*
 
 
@@ -9,6 +10,8 @@ interface TimerStatusInterface{
 }
 
 class MicroTimer(tsc: TimerStatusInterface) {
+
+    private val TAG = "MICROTIMER"
 
     var timeInSeconds = 0
         private set
@@ -44,7 +47,7 @@ class MicroTimer(tsc: TimerStatusInterface) {
 
             timer = Timer()
             state = MicroTimerState.RUNNING
-            timer.scheduleAtFixedRate(CountDownTask(), 0, countDownIntervalMS)
+            timer.scheduleAtFixedRate(CountDownTask(), countDownIntervalMS, countDownIntervalMS)
         }
     }
 
@@ -76,6 +79,7 @@ class MicroTimer(tsc: TimerStatusInterface) {
             timeInSeconds--
             timerStatusCallback.onTimerTick(timeInSeconds)
         }
+        Log.d(TAG, "Time remaining: $timeInSeconds")
     }
 
     inner class CountDownTask : TimerTask() {

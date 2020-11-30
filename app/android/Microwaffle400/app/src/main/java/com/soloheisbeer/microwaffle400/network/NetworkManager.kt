@@ -20,7 +20,7 @@ interface ConnectionUpdateInterface {
 object NetworkManager {
 
     private const val microURL = "http://192.168.178.146"
-    //private const val microURL = "http://192.168.178.10"
+    //private const val microURL = "http://192.168.178.10:3030"
     private lateinit var socket: Socket
     private var statusUpdateCallbacks = ArrayList<StatusUpdateInterface>()
     private var connectionUpdateCallbacks = ArrayList<ConnectionUpdateInterface>()

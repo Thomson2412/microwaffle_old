@@ -63,7 +63,7 @@ module.exports = class Timer {
             return;
         }
         state = timerState.RUNNING;
-        this.countdown();
+        //this.countdown();
         timerIntervalFunction = setInterval(this.countdown, countdownIntervalMS);
     }
 
