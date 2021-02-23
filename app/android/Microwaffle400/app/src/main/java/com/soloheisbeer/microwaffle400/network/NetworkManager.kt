@@ -1,10 +1,8 @@
 package com.soloheisbeer.microwaffle400.network
 
-import android.app.Activity
-import android.content.Context
-import com.github.nkzawa.emitter.Emitter
-import com.github.nkzawa.socketio.client.IO
-import com.github.nkzawa.socketio.client.Socket
+import io.socket.client.IO
+import io.socket.client.Socket
+import io.socket.emitter.Emitter
 import org.json.JSONObject
 import java.net.URISyntaxException
 
@@ -20,7 +18,7 @@ interface ConnectionUpdateInterface {
 object NetworkManager {
 
     private const val microURL = "http://192.168.178.146"
-    //private const val microURL = "http://192.168.178.10:3030"
+//    private const val microURL = "http://192.168.178.10:3030"
     private lateinit var socket: Socket
     private var statusUpdateCallbacks = ArrayList<StatusUpdateInterface>()
     private var connectionUpdateCallbacks = ArrayList<ConnectionUpdateInterface>()
@@ -33,8 +31,7 @@ object NetworkManager {
             socket.on("connect", OnConnected)
             socket.on("disconnect", OnDisconnected)
             socket.on("statusUpdate", OnStatusUpdate)
-        }
-        catch (e: URISyntaxException) {
+        } catch (e: URISyntaxException) {
         }
     }
 
@@ -71,55 +68,55 @@ object NetworkManager {
         }
     }
 
-    fun connectToMicrowave(){
-        if(!socket.connected())
+    fun connectToMicrowave() {
+        if (!socket.connected())
             socket.connect()
     }
 
-    fun startMicrowave(timeInSeconds: Int){
+    fun startMicrowave(timeInSeconds: Int) {
         socket.emit("start", timeInSeconds)
     }
 
-    fun pauseMicrowave(){
+    fun pauseMicrowave() {
         socket.emit("pause")
     }
 
-    fun stopMicrowave(){
+    fun stopMicrowave() {
         socket.emit("stop")
     }
 
-    fun addTimeToMicrowave(timeInSeconds: Int){
+    fun addTimeToMicrowave(timeInSeconds: Int) {
         socket.emit("addTime", timeInSeconds)
     }
 
-    fun sendStatusUpdateRequest(){
+    fun sendStatusUpdateRequest() {
         socket.emit("getStatus")
     }
 
-    fun cleanUp(){
+    fun cleanUp() {
         socket.disconnect()
         socket.off("statusUpdate", OnStatusUpdate)
     }
 
-    fun addStatusUpdateCallback(suc: StatusUpdateInterface){
+    fun addStatusUpdateCallback(suc: StatusUpdateInterface) {
         synchronized(statusUpdateCallbacks) {
             statusUpdateCallbacks.add(suc)
         }
     }
 
-    fun removeStatusUpdateCallback(suc: StatusUpdateInterface){
+    fun removeStatusUpdateCallback(suc: StatusUpdateInterface) {
         synchronized(statusUpdateCallbacks) {
             statusUpdateCallbacks.remove(suc)
         }
     }
 
-    fun addConnectionUpdateCallback(cuc: ConnectionUpdateInterface){
+    fun addConnectionUpdateCallback(cuc: ConnectionUpdateInterface) {
         synchronized(connectionUpdateCallbacks) {
             connectionUpdateCallbacks.add(cuc)
         }
     }
 
-    fun removeConnectionUpdateCallback(cuc: ConnectionUpdateInterface){
+    fun removeConnectionUpdateCallback(cuc: ConnectionUpdateInterface) {
         synchronized(connectionUpdateCallbacks) {
             connectionUpdateCallbacks.remove(cuc)
         }

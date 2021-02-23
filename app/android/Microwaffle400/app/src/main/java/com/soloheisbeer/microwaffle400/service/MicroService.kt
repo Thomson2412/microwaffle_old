@@ -65,9 +65,11 @@ class MicroService : Service(),
         }
     }
 
-    private val notificationID = 1001
+    private val notificationIDTimer = 1001
     private val channelTimerID = "MicroServiceTimer"
     private val channelTimerName = "Timer"
+
+    private val notificationIDFinish = 1002
     private val channelFinishID = "MicroServiceTimerFinish"
     private val channelFinishName = "Alarm"
 
@@ -87,7 +89,7 @@ class MicroService : Service(),
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
 
         val tis = intent.getIntExtra(DATA_SERVICE_TIME, 0)
-        startForeground(notificationID, createTimerNotification(tis))
+        startForeground(notificationIDTimer, createTimerNotification(tis))
 
         when(intent.action){
             ACTION_SERVICE_START_TIMER -> start(tis)
@@ -124,7 +126,7 @@ class MicroService : Service(),
     }
 
     override fun onTimerTick(timeLeftInSeconds: Int){
-        notificationManager.notify(notificationID, createTimerNotification(timeLeftInSeconds))
+        notificationManager.notify(notificationIDTimer, createTimerNotification(timeLeftInSeconds))
         Intent().also { intent ->
             intent.action = ACTION_TIMER_TICK
             intent.putExtra(DATA_TIMER_TIME_LEFT, timeLeftInSeconds)
@@ -141,7 +143,7 @@ class MicroService : Service(),
             sendBroadcast(intent)
         }
         stopSelf()
-        notificationManager.notify(notificationID, createFinishNotification())
+        notificationManager.notify(notificationIDFinish, createFinishNotification())
     }
 
     override fun onStatusUpdate(status: JSONObject){
@@ -210,7 +212,7 @@ class MicroService : Service(),
 
             val audioAttributes = AudioAttributes.Builder()
                 .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                .setUsage(AudioAttributes.USAGE_ALARM)
+                .setUsage(AudioAttributes.USAGE_MEDIA)
                 .build()
 
             serviceChannel.setSound(sound, audioAttributes)
